@@ -1,0 +1,14 @@
+{
+    "name": "webtex-local-compiler",
+    "version": "1.0.0",
+    "description": "WebTeX本地编译客户端 - 在本地运行，执行LaTeX编译",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js"
+    },
+    "dependencies": {
+        "express": "^4.18.2",
+        "cors": "^2.8.5",
+        "ws": "^8.14.2"
+    }
+}

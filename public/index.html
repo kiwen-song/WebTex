@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebTeX - 在线协同LaTeX编辑器</title>
+
+    <!-- CodeMirror -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldgutter.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/dialog/dialog.min.css">
+
+    <!-- 图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <!-- 登录模态框 -->
+    <div id="login-modal" class="modal">
+        <div class="modal-content">
+            <h2><i class="fas fa-file-code"></i> WebTeX</h2>
+            <p>在线协同LaTeX编辑器 - 本地编译预览</p>
+
+            <div class="compiler-status" id="login-compiler-status">
+                <i class="fas fa-circle-notch fa-spin"></i>
+                <span>正在检测本地编译服务...</span>
+            </div>
+
+            <div class="form-group">
+                <label for="username">你的昵称</label>
+                <input type="text" id="username" placeholder="输入昵称（如：张三）" maxlength="20">
+            </div>
+            <div class="form-group">
+                <label for="project-id">项目ID（可选，留空加入默认项目）</label>
+                <input type="text" id="project-id" placeholder="输入项目ID或留空">
+            </div>
+            <div class="form-group">
+                <label>选择颜色</label>
+                <div class="color-picker">
+                    <div class="color-option selected" data-color="#e91e63" style="background:#e91e63"></div>
+                    <div class="color-option" data-color="#9c27b0" style="background:#9c27b0"></div>
+                    <div class="color-option" data-color="#673ab7" style="background:#673ab7"></div>
+                    <div class="color-option" data-color="#3f51b5" style="background:#3f51b5"></div>
+                    <div class="color-option" data-color="#2196f3" style="background:#2196f3"></div>
+                    <div class="color-option" data-color="#00bcd4" style="background:#00bcd4"></div>
+                    <div class="color-option" data-color="#009688" style="background:#009688"></div>
+                    <div class="color-option" data-color="#4caf50" style="background:#4caf50"></div>
+                    <div class="color-option" data-color="#ff9800" style="background:#ff9800"></div>
+                    <div class="color-option" data-color="#ff5722" style="background:#ff5722"></div>
+                </div>
+            </div>
+            <button id="join-btn" class="btn-primary">
+                <i class="fas fa-sign-in-alt"></i> 加入编辑
+            </button>
+        </div>
+    </div>
+
+    <!-- 主界面 -->
+    <div id="main-container" class="hidden">
+        <!-- 顶部工具栏 -->
+        <header class="toolbar">
+            <div class="toolbar-left">
+                <button class="tool-btn" id="btn-home" title="返回项目列表">
+                    <i class="fas fa-home"></i>
+                </button>
+                <div class="logo">
+                    <i class="fas fa-file-code"></i>
+                    <span>WebTeX</span>
+                </div>
+                <div class="project-name" id="project-name">数学建模论文</div>
+            </div>
+            <div class="toolbar-center">
+                <div class="compiler-selector">
+                    <select id="compiler-select" title="选择编译器">
+                        <option value="xelatex">XeLaTeX</option>
+                    </select>
+                </div>
+                <button class="tool-btn compile-btn" id="btn-compile" title="编译 (Ctrl+S)">
+                    <i class="fas fa-play"></i>
+                    <span>编译</span>
+                </button>
+                <div class="compile-status" id="compile-status">
+                    <span class="status-dot"></span>
+                    <span class="status-text">就绪</span>
+                </div>
+                <div class="separator"></div>
+                <button class="tool-btn" id="btn-download" title="下载当前文件">
+                    <i class="fas fa-download"></i>
+                </button>
+                <button class="tool-btn" id="btn-download-all" title="下载全部文件(ZIP)">
+                    <i class="fas fa-file-archive"></i>
+                </button>
+                <button class="tool-btn" id="btn-download-pdf" title="下载PDF" disabled>
+                    <i class="fas fa-file-pdf"></i>
+                </button>
+                <div class="separator"></div>
+                <button class="tool-btn" id="btn-undo" title="撤销 (Ctrl+Z)">
+                    <i class="fas fa-undo"></i>
+                </button>
+                <button class="tool-btn" id="btn-redo" title="重做 (Ctrl+Y)">
+                    <i class="fas fa-redo"></i>
+                </button>
+                <div class="separator"></div>
+                <button class="tool-btn" id="btn-bold" title="粗体 \\textbf{}">
+                    <i class="fas fa-bold"></i>
+                </button>
+                <button class="tool-btn" id="btn-italic" title="斜体 \\textit{}">
+                    <i class="fas fa-italic"></i>
+                </button>
+                <button class="tool-btn" id="btn-math" title="行内公式 $...$">
+                    <i class="fas fa-square-root-variable"></i>
+                </button>
+                <button class="tool-btn" id="btn-equation" title="公式块">
+                    <i class="fas fa-superscript"></i>
+                </button>
+            </div>
+            <div class="toolbar-right">
+                <div class="online-users" id="online-users"></div>
+                <button class="tool-btn" id="btn-chat" title="聊天">
+                    <i class="fas fa-comments"></i>
+                    <span class="badge hidden" id="chat-badge">0</span>
+                </button>
+                <button class="tool-btn" id="btn-logs" title="编译日志">
+                    <i class="fas fa-terminal"></i>
+                </button>
+                <button class="tool-btn" id="btn-settings" title="设置">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- 主内容区 -->
+        <div class="main-content">
+            <!-- 侧边栏 - 文件列表 -->
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-header">
+                    <h3><i class="fas fa-folder-open"></i> 文件</h3>
+                    <div class="sidebar-actions">
+                        <button class="icon-btn" id="btn-new-file" title="新建文件">
+                            <i class="fas fa-file-plus"></i>
+                        </button>
+                        <button class="icon-btn" id="btn-new-folder" title="新建文件夹">
+                            <i class="fas fa-folder-plus"></i>
+                        </button>
+                        <button class="icon-btn" id="btn-upload-file" title="上传文件">
+                            <i class="fas fa-upload"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="file-list" id="file-list"></div>
+                <div class="sidebar-footer">
+                    <div class="project-info">
+                        <small>项目ID: <span id="display-project-id"></span></small>
+                        <button class="icon-btn" id="btn-copy-id" title="复制项目ID">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- 编辑器和预览分栏 -->
+            <div class="editor-preview-container">
+                <!-- 编辑器区域 -->
+                <div class="editor-pane" id="editor-pane">
+                    <div class="pane-header">
+                        <div class="file-tabs" id="file-tabs"></div>
+                    </div>
+                    <div class="editor-wrapper">
+                        <textarea id="editor"></textarea>
+                    </div>
+                    <div class="editor-footer">
+                        <div class="status-left">
+                            <span id="cursor-position">行 1, 列 1</span>
+                            <span class="separator">|</span>
+                            <span id="doc-status">已同步</span>
+                        </div>
+                        <div class="status-right">
+                            <span id="user-count">1 人在线</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 分割条 -->
+                <div class="resizer" id="resizer"></div>
+
+                <!-- PDF预览区域 -->
+                <div class="preview-pane" id="preview-pane">
+                    <div class="pane-header">
+                        <span><i class="fas fa-file-pdf"></i> PDF 预览</span>
+                        <div class="preview-controls">
+                            <button class="icon-btn" id="btn-zoom-out" title="缩小">
+                                <i class="fas fa-search-minus"></i>
+                            </button>
+                            <span id="zoom-level">100%</span>
+                            <button class="icon-btn" id="btn-zoom-in" title="放大">
+                                <i class="fas fa-search-plus"></i>
+                            </button>
+                            <button class="icon-btn" id="btn-zoom-fit" title="适应宽度">
+                                <i class="fas fa-expand"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="preview-wrapper" id="preview-wrapper">
+                        <div class="preview-placeholder" id="preview-placeholder">
+                            <i class="fas fa-file-pdf"></i>
+                            <p>点击"编译"按钮生成PDF预览</p>
+                            <p class="hint">快捷键: Ctrl+S</p>
+                        </div>
+                        <iframe id="pdf-viewer" class="hidden"></iframe>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 聊天面板 -->
+            <aside class="chat-panel hidden" id="chat-panel">
+                <div class="chat-header">
+                    <h3><i class="fas fa-comments"></i> 团队聊天</h3>
+                    <button class="icon-btn" id="btn-close-chat">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="chat-messages" id="chat-messages"></div>
+                <div class="chat-input">
+                    <input type="text" id="chat-input" placeholder="输入消息...">
+                    <button class="icon-btn" id="btn-send-chat">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </aside>
+        </div>
+
+        <!-- 编译日志面板 -->
+        <div class="logs-panel hidden" id="logs-panel">
+            <div class="logs-header">
+                <span><i class="fas fa-terminal"></i> 编译日志</span>
+                <div class="logs-tabs">
+                    <button class="log-tab active" data-tab="output">输出</button>
+                    <button class="log-tab" data-tab="errors">错误 <span id="error-count">(0)</span></button>
+                    <button class="log-tab" data-tab="warnings">警告 <span id="warning-count">(0)</span></button>
+                </div>
+                <button class="icon-btn" id="btn-close-logs">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="logs-content">
+                <div class="log-tab-content active" id="log-output">
+                    <pre id="compile-log"></pre>
+                </div>
+                <div class="log-tab-content" id="log-errors">
+                    <div id="error-list"></div>
+                </div>
+                <div class="log-tab-content" id="log-warnings">
+                    <div id="warning-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设置模态框 -->
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-cog"></i> 设置</h2>
+                <button class="icon-btn" id="btn-close-settings">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="settings-content">
+                <div class="setting-group">
+                    <h4>编辑器设置</h4>
+                    <div class="setting-item">
+                        <label for="font-size">字体大小</label>
+                        <select id="font-size">
+                            <option value="12">12px</option>
+                            <option value="14" selected>14px</option>
+                            <option value="16">16px</option>
+                            <option value="18">18px</option>
+                            <option value="20">20px</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="theme">编辑器主题</label>
+                        <select id="theme">
+                            <option value="default">默认（浅色）</option>
+                            <option value="monokai" selected>Monokai（深色）</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="auto-compile">自动编译（停止输入2秒后）</label>
+                        <input type="checkbox" id="auto-compile">
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <h4>本地编译服务</h4>
+                    <div class="setting-item">
+                        <label for="compiler-url">编译服务地址</label>
+                        <input type="text" id="compiler-url" value="http://localhost:8088">
+                    </div>
+                    <div class="compiler-status" id="settings-compiler-status">
+                        <i class="fas fa-circle"></i>
+                        <span>检测中...</span>
+                    </div>
+                    <p class="setting-note">
+                        <i class="fas fa-info-circle"></i>
+                        需要在本地运行编译客户端。进入 <code>local-compiler</code> 目录，执行：<br>
+                        <code>npm install && npm start</code>
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary" id="btn-save-settings">保存设置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新建文件模态框 -->
+    <div id="new-file-modal" class="modal hidden">
+        <div class="modal-content modal-small">
+            <h3>新建文件</h3>
+            <div class="form-group">
+                <label for="new-filename">文件名</label>
+                <input type="text" id="new-filename" placeholder="例如: chapter1.tex">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" id="btn-cancel-new-file">取消</button>
+                <button class="btn-primary" id="btn-confirm-new-file">创建</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/stex/stex.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/matchbrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldgutter.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/brace-fold.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/search/search.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/search/searchcursor.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/dialog/dialog.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>
