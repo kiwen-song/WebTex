@@ -165,7 +165,7 @@ cp .env.example .env
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/webtex.git
+git clone https://github.com/kiwen-song/webtex.git
 cd webtex
 
 # Install server dependencies
